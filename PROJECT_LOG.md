@@ -75,3 +75,41 @@ Keep this as a later extension. Finish the DTMC core first.
 5. Monthly compliance/checklist.
 6. Exception-driven Dashboard/Reports.
 7. End-to-end pilot test and Git source checkpoint.
+
+
+## 2026-09-25 — V1 core feature complete / pilot handoff
+
+### Completed today
+- STEP 13 responsible-person label/data issue resolved using real `staff.display_name`; selection remains active-staff-only.
+- Frozen V1 navigation: Search / Asset list / Add asset / Check asset / Reports / Logout.
+- Search implemented across asset ID, category, brand, model, location, owner, responsible person, and status.
+- Add-asset UI added; category list is read dynamically from `DTMC_CATEGORY`; responsible-person candidates come from active staff at the user's station.
+- Added Check Asset UI for work-use PC/Notebook, regardless of government/private ownership.
+- Corrected compliance model: **2FA removed from asset inspection** because it is account/user compliance, not device compliance.
+- Added DTMC columns: `computer_name`, `platform`, `windows_update`, `system_cleansing`, `omnix365_agent`.
+- Added server-side asset-check save path with unit access enforcement and `last_verified_at`.
+- Platform choices: Windows / Linux / macOS.
+- Added basic Report view: total / ACTIVE / INACTIVE / category counts.
+- Added Trusted Browser service design and implementation: OTP first verification, per-email browser token, server stores SHA-256 token hash, 180-day expiry, active user/station revalidation, revoke support. Same browser may hold separate trusted tokens for multiple users; no shared-user auto-login.
+- Generated DTMC QR for pilot distribution.
+
+### Omnix365 / PG-BOT decisions
+- Computer Name must not rely on users discovering it manually.
+- Next PG-BOT version will read the Windows Computer Name and show it in `PG-BOT-LAST.txt` with Thai instructions for copying it into DTMC.
+- Planned Omnix recovery architecture: DTMC = inventory/mapping; Private Git = non-secret scripts/config; Secure Vault = token/key; Omnix365 = endpoint platform.
+- Planned disposable per-device enrollment batch: bind/check Computer Name, enroll, verify, remove temporary secret material, then self-delete.
+- Do not commit reusable enrollment secrets/tokens directly to Git history.
+
+### V1 status
+**Core feature complete → Pilot user testing.**
+
+Do not expand the UI before pilot feedback. Next reporting phase: overall dashboard → station groups → individual station → asset drill-down.
+
+### Technical debt / follow-up
+- Stable internal asset key remains required. Some flows still use asset-register number as `assetId`, which is insufficient for private assets without a register number and for duplicates.
+- Trusted Browser reduces repeated OTP but does **not** replace the earlier production-security requirement to stop trusting browser-supplied identity on protected endpoints. Complete server-side authenticated session identity before production.
+- Verify Trusted Browser end-to-end with: first OTP → logout → same email/browser bypasses OTP; second email on same browser requires its own first OTP.
+- Mirror the stabilized Apps Script source into Git.
+- Add `AUDIT_LOG`.
+- Build advanced reports only after pilot feedback.
+- Update PG-BOT to expose Computer Name in `PG-BOT-LAST.txt`.
