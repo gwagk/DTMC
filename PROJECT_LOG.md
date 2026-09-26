@@ -113,3 +113,82 @@ Do not expand the UI before pilot feedback. Next reporting phase: overall dashbo
 - Add `AUDIT_LOG`.
 - Build advanced reports only after pilot feedback.
 - Update PG-BOT to expose Computer Name in `PG-BOT-LAST.txt`.
+
+## 2026-09-26 — DTMC SPLAT concept freeze
+
+### SPLAT — lightweight branch from the DTMC root
+**DTMC SPLAT** is a lifecycle workflow branch that reuses the existing DTMC data root. It is **not** a second asset register and must not become a duplicate master.
+
+Core principle:
+- **DTMC = source of truth / root.**
+- **SPLAT = workflow branch.**
+- Read asset data from the DTMC Sheet only.
+- Do not copy DTMC asset data into a new SPLAT master.
+- Asset add/edit/update remains in DTMC only.
+- SPLAT stores only data created by the SPLAT process.
+
+### Scope
+SPLAT reads only DTMC records that are:
+- PC or Notebook;
+- alive / usable according to DTMC status;
+- either government assets or privately owned computers voluntarily registered in DTMC for work use.
+
+Assets that are broken, retired, disposed, or otherwise not usable are outside the active SPLAT queue.
+
+### Authentication / authorization
+Reuse the DTMC authentication, staff, station, and permission model. Do not create a second user directory or second login.
+
+After DTMC authentication, an authorized user may enter the DTMC core or the SPLAT branch without logging in again.
+
+Need-to-Know remains server-side:
+- station admins see only their own authorized station;
+- assigned operators see only the stations assigned to them;
+- SPLAT must enforce authorization on the server, not merely hide rows in the UI.
+
+### Minimal SPLAT data
+Link every SPLAT record to the stable DTMC internal assetId.
+
+SPLAT should keep only workflow-specific data such as:
+- assetId
+- approved computerName
+- current machine owner/user when needed by the workflow
+- per-device Omnix enrollment key/reference as required by the deployment process
+- script/tool/download reference
+- completedAt
+
+Do not duplicate station, asset-register number, category, brand, model, or other DTMC master fields in SPLAT.
+
+No manual “not done” status is required:
+- completedAt empty = still pending;
+- completedAt present = SPLATTED / completed.
+
+### Lifecycle
+Initial rollout will carry the largest workload because existing eligible computers form the starting backlog.
+
+After the backlog is completed, SPLAT should normally remain quiet and react only to lifecycle events such as:
+- a new eligible PC/Notebook is added to DTMC;
+- a previously missed computer is registered in DTMC;
+- an eligible computer requires a new deployment cycle;
+- an old computer leaves active service.
+
+The intended workflow is approximately:
+
+DTMC asset → Computer Name → required tool/script → PG-BOT verify → Omnix enrollment/verification → print sticker → apply sticker → completedAt
+
+The physical sticker is the visible endpoint of the workflow.
+
+### Architecture guardrails
+SPLAT must remain small. It is **not**:
+- another asset-management system;
+- a helpdesk;
+- a patch-management platform;
+- an Omnix clone;
+- a second inventory database.
+
+DTMC owns asset identity and lifecycle truth. Omnix owns endpoint monitoring/security telemetry. SPLAT owns only the transition workflow that prepares an eligible DTMC computer and closes the loop with a physical sticker.
+
+### Before implementation
+Do not start SPLAT coding until the DTMC stable internal assetId technical debt is resolved. SPLAT must not use row numbers, Computer Name, or asset-register numbers as its long-term primary key.
+
+Design objective: **one data root, one authentication model, one permission model, no duplicate entry, minimal recurring work, and a workflow that becomes quiet when there is nothing new to process.**
+
