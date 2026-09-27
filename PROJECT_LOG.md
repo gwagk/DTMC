@@ -192,3 +192,99 @@ Do not start SPLAT coding until the DTMC stable internal assetId technical debt 
 
 Design objective: **one data root, one authentication model, one permission model, no duplicate entry, minimal recurring work, and a workflow that becomes quiet when there is nothing new to process.**
 
+
+
+## 2026-09-27 — DTMC SPLAT EXE prototype / pilot freeze
+
+### Big Picture
+The executable is the last mile, not the source of truth. First standardize endpoint identity, then automate installation.
+
+Identity chain:
+DTMC approved Computer Name → physical sticker → NAME-IT rename → restart → Windows Computer Name → DTMC SPLAT EXE → Wazuh Agent Name → Omnix verification.
+
+The simplification is that every endpoint has a unique approved Computer Name and the enrollment group is known as Quarantine. The EXE does not need a per-device build or a user-entered Agent Name: it reads the Windows Computer Name at runtime and uses it as the Wazuh Agent Name.
+
+### Pilot workflow
+1. Confirm the endpoint exists in DTMC and assign its approved unique Computer Name.
+2. Apply the physical sticker carrying that identity.
+3. Run NAME-IT as Administrator to rename Windows.
+4. Restart Windows; continue only when the restarted Computer Name matches the approved/sticker name.
+5. Run DTMC-SPLAT.exe as Administrator.
+6. If Wazuh is already installed, do not reinstall it; check/start the local service instead.
+7. If Wazuh is absent, download/install the Windows Wazuh agent with the configured Manager, Quarantine group, and current Computer Name as Agent Name; start and verify the service.
+8. Admin verifies the endpoint server-side in Omnix: ACTIVE and identity match.
+9. Only after end-to-end verification mark the workflow SPLATTED/completed.
+
+### Prototype v0.3 behavior
+- Python + Tkinter GUI.
+- Windows-only guard and Administrator check.
+- Reads Computer Name automatically.
+- Wazuh Manager: odpc12.omnix365.net.
+- Enrollment group: Quarantine.
+- Prototype package: Wazuh 4.14.7-1.
+- Checks the local Wazuh Windows service before installation.
+- Existing agent: no duplicate install; start service if needed and verify RUNNING.
+- Missing agent: download MSI, install silently with Manager/Group/Agent Name parameters, start service, verify locally.
+- Failure: stop, show error, and tell the operator not to retry blindly.
+
+Important: local service RUNNING is not sufficient proof of completed deployment. The pilot VM demonstrated why: an existing Wazuh agent can have an older/different Agent Name. Production completion requires Omnix-side ACTIVE + identity verification. Future UI should distinguish LOCAL AGENT RUNNING from final SPLATTED.
+
+### Build notebook — Linux authoring environment
+Ubuntu was the primary authoring workstation.
+
+Install Tk support:
+
+    sudo apt install python3-tk
+
+Use a virtual environment rather than forcing packages into Ubuntu's externally-managed system Python:
+
+    sudo apt install python3-venv
+    python3 -m venv .venv
+    .venv/bin/pip install pyinstaller
+
+PyInstaller installed on Linux does not natively produce the desired Windows EXE. Build the Windows EXE on Windows.
+
+### Build notebook — Windows EXE environment
+Install Python:
+
+    winget install --id Python.Python.3.13 -e
+
+On the pilot VM, PATH/launcher was not immediately usable, so the reliable direct interpreter path was:
+
+    & "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" --version
+
+Install PyInstaller:
+
+    & "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" -m pip install pyinstaller
+
+Build a single-windowed EXE:
+
+    & "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" -m PyInstaller --onefile --windowed --name "DTMC-SPLAT" --distpath "$HOME\Desktop" --noconfirm "<path-to-splat_omnix.py>"
+
+During development the source was shared from Ubuntu to the Windows KVM VM over Samba. A UNC source path was more reliable than depending on a mapped drive in an elevated Windows session because elevated and normal sessions can expose different mapped-drive contexts.
+
+### Why Python + PyInstaller
+Python keeps the workflow readable for teaching/support work; Tkinter provides a small GUI without adding a web stack; PyInstaller packages the program and dependencies so the end user runs one EXE instead of installing Python or handling several BAT/PowerShell files.
+
+Build model:
+Understand workflow → write/test Python source → build on target OS → pilot on a real endpoint → fix evidence-based failures → only then release for users.
+
+### Pilot / release gate
+Current status: PROTOTYPE BUILT — NOT APPROVED FOR DISTRIBUTION.
+
+Next real pilot target: JETEK. Do not publish or hand out a download link until the JETEK end-to-end test passes: rename/restart → exact Computer Name → EXE → Wazuh local service → Omnix ACTIVE + name match.
+
+Before production release, review:
+- approved-name guard against accidental enrollment of default names such as DESKTOP-*;
+- server-side Omnix ACTIVE/name-match verification or a clear admin verification gate;
+- installer success codes such as reboot-required outcomes;
+- safe subprocess invocation/quoting;
+- behavior when Wazuh exists but was enrolled under a different Agent Name;
+- unsigned PyInstaller EXE / SmartScreen or endpoint-security behavior;
+- version pinning/update strategy and checksum/evidence for the released artifact.
+
+### Release discipline
+Keep the pilot artifact private/unadvertised. A GitHub Release asset may be staged for controlled testing, but do not distribute the download link until the pilot gate passes. After PASS, freeze the tested source/build recipe, record the artifact checksum/version, and then publish the user-facing link.
+
+### Teaching principle
+Do not teach the EXE as magic. Start with the Big Picture: stable endpoint identity is what makes the automation small. The lesson is not merely how to click PyInstaller; it is how to reduce the problem first — one Source of Truth, unique Computer Name, known enrollment group, idempotent local behavior, explicit verification, and a build that does not create a new maintenance loop.
