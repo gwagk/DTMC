@@ -129,3 +129,29 @@ Example device-aware checks: OS/Windows Update, 2FA, cleansing, Omnix365 where r
 `small function/module → run → inspect log/UI → pass/fix → next step`
 
 Goal: **บั๊กยาก เจอไว แก้ง่าย**.
+
+
+## KM checkpoint — 8 Oct 2026: DTMC SPLAT / Minimum Viable Monitoring (MVM)
+
+**หลักคิด:** ก้าวทีละก้าว ให้ไกลขึ้น ไม่วกวน — *Lean, not theatre.* ใช้ Google Sheets สำหรับการกำกับติดตามที่ไม่จำเป็นต้องมีระบบ Web App เพิ่ม: **ข้อมูลถูก • ดูง่าย • ติดตามได้ • ตัดสินใจได้**.
+
+### ผลที่ตรวจเทียบแล้ว (snapshot; ไม่ใช่ real-time)
+
+- แหล่งอ้างอิง: [DTMC SPLAT BOARD](https://docs.google.com/spreadsheets/d/1HEP9BWDu0RrF-goNivd_TX1OsCtL9Y3jHbfMQTYgP3U/edit) — `com-name` (Master) เทียบ `omnix-current` (Wazuh snapshot)
+- Master **47 เครื่อง**; ขอบเขตติดตั้งปัจจุบัน **44 เครื่อง**; พบชื่อเครื่องใน OMNIX **44/44 = 100% name-match coverage**. **ไม่ใช่**หลักฐานว่า Agent ทุกเครื่องออนไลน์หรือทำงานปกติ.
+- Kiosk **3 เครื่อง** เป็นรายการเฉพาะภารกิจ แยกจาก Workstation และคงไว้ใน Master: `AIO-01-HDY` (สนามบินหาดใหญ่) และ `AIO-01-NAW` (นราธิวาส) ผู้รับผิดชอบยืนยันแล้วว่าเป็น **Special-Purpose Computing Equipment / Not in Service**; `AIO-01-SDOF` (อาคารสะเดา) **รอคำยืนยัน**. ขอบเขต 44 เครื่องจึงเป็นขอบเขต *ปัจจุบัน* และต้องทบทวนเมื่อได้คำตอบครบ.
+- `PC-01-BTG` มีรายงานว่าเสียและรอซ่อม แต่ยังไม่พบชื่อดังกล่าวใน Master/OMNIX ที่ตรวจเทียบ; **ต้องตรวจชื่อเครื่องและเลขครุภัณฑ์ก่อนจับคู่**. ไม่ลบหรือซ่อนปัญหา.
+- `PC-01-BPK`, `PC-01-PDB`, `PC-01-SGK` ปรากฏใน OMNIX แต่ **ไม่พบ Computer Name ตรงกันใน Master**; สถานะ **UNMAPPED — รอพัสดุตรวจสอบ**. ห้ามสรุปว่าไม่มีครุภัณฑ์หรือเป็นเครื่องส่วนตัว.
+- [SPLAT-STATUS-BOARD](https://docs.google.com/spreadsheets/d/1HEP9BWDu0RrF-goNivd_TX1OsCtL9Y3jHbfMQTYgP3U/edit#gid=987654325) มี KPI, วันที่อ้างอิง **8 ต.ค. 2569**, หมายเหตุ และ Doughnut Chart แสดง **44 เครื่องในขอบเขต / 3 Kiosk**. เป็น **snapshot**; ไม่ใช่ข้อมูลสด. แผนภูมิใช้ labeled legend.
+
+### วิธีทำที่พิสูจน์แล้ว
+
+1. **Single Source of Truth:** เก็บทะเบียนและหลักฐานไว้ใน Master; แยกการรายงานออกจากข้อมูลดิบ.
+2. **Need-to-Know / Least Privilege:** ผู้ดูรายงานเห็นเฉพาะข้อมูลจำเป็น. **Google Sheets แชร์สิทธิ์ระดับไฟล์ ไม่ใช่แท็บ**; ซ่อนแท็บไม่ใช่การป้องกันข้อมูล.
+3. **Google Sheets First:** KPI + Chart + Value + วันที่ + หมายเหตุ เพียงพอสำหรับ monitoring รอบนี้; **ไม่ต้องเขียนโค้ด/Deploy/OTP** เพียงเพื่อแสดงรายงาน. หลักนี้ไม่ลบล้างข้อกำหนดด้านความปลอดภัยของ Web App ที่ใช้ทำรายการแก้ไขข้อมูลในงาน DTMC ส่วนอื่น.
+4. **Controlled Publication:** ถ้าจะเผยแพร่เฉพาะ Dashboard ให้คัดลอกไป **ไฟล์ใหม่** และแชร์แบบ Viewer; การคัดลอก **ไม่ซิงก์อัตโนมัติ**. ถ้าต้องการซิงก์ภายหลังให้ประเมินกลไกที่ส่งเฉพาะข้อมูลอนุญาต; **ยังไม่มีการสร้างไฟล์เผยแพร่หรือระบบซิงก์ใน checkpoint นี้**.
+5. **Measure ≠ assume:** แยกผลจับคู่ชื่อเครื่อง, สถานะออนไลน์, การยืนยันประเภทอุปกรณ์, และเลขครุภัณฑ์จริงออกจากกัน. ทุกข้อยกเว้นต้องมีเหตุผลและสถานะติดตาม.
+
+**MVM — Minimum Viable Monitoring:** *See Enough • Know Enough • Act in Time.* สร้างเท่าที่จำเป็น ใช้ของเดิมให้คุ้ม และเก็บเฉพาะบทเรียนที่ใช้ได้จริง.
+
+**สถานะปิดรอบ:** ผลการจับคู่ชื่อเครื่องครบตามขอบเขตปัจจุบัน; **ยังไม่ปิดงานตรวจสอบทะเบียน/สถานภาพ** จนกว่าจะได้คำตอบอาคารสะเดา ตรวจสอบเบตง และยืนยัน 3 รายการกับพัสดุ.
